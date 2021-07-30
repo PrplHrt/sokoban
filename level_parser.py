@@ -1,14 +1,4 @@
-f = open("levels/lvl_1.txt")
-
-level = []
-
-for line in f:
-    # Creating list of character lists, excluding the newline character
-    level.append(list(line[:-1]))
-
-print(level)
-
-f.close()
+import arcade as arc
 
 class game():
     def __init__(self):
