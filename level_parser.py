@@ -1,5 +1,4 @@
 import arcade as arc
-
 class game():
     def __init__(self):
         f = open("levels/lvl_1.txt")
@@ -9,4 +8,12 @@ class game():
             self.level.append(list(line[:-1]))
         f.close()
 
-    
+def main():
+    # Creating game window with width, height, and title
+    window = arc.Window(600, 400, "Sokoban")
+    arc.run()
+
+
+
+if __name__ == '__main__':
+    main()
