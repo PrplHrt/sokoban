@@ -33,19 +33,22 @@ SPRITES = {
     PLAYER_ON_TARGET:"assets/meriam_sokoban_sprites/floor.jpg"
 }
 
-# Created child class of arcade.Window
-class LevelWindow(arc.Window):
-    def __init__(self, w: int, h: int, t: str, f = "lvl_3.txt"):
-        # Prepare the Window
-        super().__init__(w, h, t)
-        arc.set_background_color(arc.color.AMARANTH_PURPLE)
+# Created child class of arcade.View
+class LevelView(arc.View):
+    def __init__(self, f = "lvl_1.txt"):
+        super().__init__()
 
-        
         f = open("assets/levels/" + f)
         self.level = []
         for line in f:
             # Creating list of character lists, excluding the newline character
-            self.level.append(list(line[:-1].replace("\t", "")))
+            row = list(line[:-1].replace("\t", ""))
+            while len(row) < WIDTH:
+                row.append(FLOOR)
+            self.level.append(row)
+
+        while len(self.level) < HEIGHT:
+            self.level.append(list(FLOOR * WIDTH))
         f.close()
 
     # Refreshes the screen
@@ -150,8 +153,12 @@ class LevelWindow(arc.Window):
             self.move_player(0, -1)
 
 def main():
+
     # Creating game window with width, height, and title
-    window = LevelWindow(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    window = arc.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    # Creating the level view
+    view = LevelView()
+    window.show_view(view)
     arc.run()
 
 
