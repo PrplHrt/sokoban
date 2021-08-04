@@ -169,6 +169,15 @@ class LevelView(arc.View):
         while len(self.level) < HEIGHT:
             self.level.append(list(FLOOR * WIDTH))
         f.close()
+        self.name = ""
+        filename= LEVELS[self.level_id][:-4]
+        if filename[-2:-1] not in range(10):
+                for i in range(len(filename)-1, 0-1, -1):
+                    if(filename[i] == "_"):
+                        break
+                    self.name = filename[i] + self.name
+
+        self.counter = 0
 
     # Refreshes the screen
     def on_draw(self):
@@ -192,15 +201,9 @@ class LevelView(arc.View):
 
         sprites.draw()
 
-        filename= LEVELS[self.level_id][:-4]
-        if filename[-2:-1] not in range(10):
-            name = ""
-            for i in range(len(filename)-1, 0-1, -1):
-                if(filename[i] == "_"):
-                    break
-                name = filename[i] + name
+        if self.name != "":
             arc.draw_text(
-                "Made by " + name,
+                "Made by " + self.name,
                 SCREEN_WIDTH, 
                 0,
                 arc.color.WHITE_SMOKE,
@@ -208,6 +211,14 @@ class LevelView(arc.View):
                 anchor_x = "right"
             )
 
+        arc.draw_text(
+            "Number of moves: " + str(self.counter),
+            0, 
+            0,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "left"
+        )
 
 
         if self.completed():
@@ -261,11 +272,13 @@ class LevelView(arc.View):
         if cell1 == FLOOR:
             self.level[pi][pj] = under_player
             self.level[cell1_i][cell1_j] = PLAYER
+            self.counter += 1
             return
         
         if cell1 == TARGET:
             self.level[pi][pj] = under_player
             self.level[cell1_i][cell1_j] = PLAYER_ON_TARGET
+            self.counter += 1
             return
         
         # if BOX or BOX_ON_TARGET is in cell1
@@ -290,6 +303,7 @@ class LevelView(arc.View):
             self.level[cell2_i][cell2_j] = BOX
         else:
             self.level[cell2_i][cell2_j] = BOX_ON_TARGET
+        self.counter += 1
 
 
    
