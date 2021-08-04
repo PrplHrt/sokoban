@@ -1,4 +1,5 @@
 import arcade as arc
+import os
 
 # Sizes of elements on the screen
 SPRITE_NATIVE_SIZE = 128
@@ -33,31 +34,130 @@ SPRITES = {
     PLAYER_ON_TARGET:"assets/meriam_sokoban_sprites/floor.jpg"
 }
 
+LEVELS = []
+
 class MenuView(arc.View):
     def __init__(self):
         super().__init__()
+        self.background = arc.load_texture("assets/background1.png")
+
+    def on_draw(self):
+        arc.start_render()
+
+        arc.draw_lrwh_rectangle_textured(
+            0,
+            0,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            self.background
+        )
+
+
+        arc.draw_text(
+            "Welcome!",
+            SCREEN_WIDTH * 0.2, 
+            SCREEN_HEIGHT * 0.6,
+            arc.color.WHITE_SMOKE,
+            48,
+            anchor_x = "left"
+        )
+        arc.draw_text(
+            "Press any key to continue...",
+            SCREEN_WIDTH * 0.2, 
+            SCREEN_HEIGHT * 0.6 - 24,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "left"
+        )
+
+        sprite = arc.Sprite(SPRITES[PLAYER], 0.9)
+        sprite.center_x = SCREEN_WIDTH * 0.7
+        sprite.center_y = SCREEN_HEIGHT * 0.4
+        sprite.draw()
+
+        sprite2 = arc.Sprite(SPRITES[BOX_ON_TARGET], 0.7)
+        sprite2.center_x = SCREEN_WIDTH * 0.7 - 0.9*SPRITE_NATIVE_SIZE
+        sprite2.center_y = SCREEN_HEIGHT * 0.4 - 0.1 * SPRITE_NATIVE_SIZE
+        sprite2.draw()
+    
+    def on_key_press(self, symbol: int, modifiers: int):
+        view = LevelView(0)
+        self.window.show_view(view)
+
+class WinnerView(arc.View):
+    def __init__(self):
+        super().__init__()
+        arc.set_background_color(arc.color.AMARANTH_PURPLE)
 
     def on_draw(self):
         arc.start_render()
 
         arc.draw_text(
-            "Welcome!",
+            "CONGRATULATIONS!",
             SCREEN_WIDTH//2, 
             SCREEN_HEIGHT//2,
-            arc.color.ALIZARIN_CRIMSON,
-            font_size = 24.0,
+            arc.color.WHITE_SMOKE,
+            48,
             anchor_x = "center"
         )
+        arc.draw_text(
+            "You've finished all levels!",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2 - 48,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "center"
+        )
+
+        arc.finish_render()
+        arc.pause(1.5)
     
     def on_key_press(self, symbol: int, modifiers: int):
-        return super().on_key_press(symbol, modifiers)
+        self.window.close()
+
+class LevelCompletedView(arc.View):
+    def __init__(self, i: int):
+        super().__init__()
+        self.level_id = i
+        arc.set_background_color(arc.color.AMARANTH_PURPLE)
+
+    def on_draw(self):
+        arc.start_render()
+
+        arc.draw_text(
+            "Level " + str(self.level_id + 1) + " Completed!",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2,
+            arc.color.WHITE_SMOKE,
+            48,
+            anchor_x = "center"
+        )
+        arc.draw_text(
+            "Press any key to continue...",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2 - 48,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "center"
+        )
+
+        arc.finish_render()
+        arc.pause(1.5)
+    
+    def on_key_press(self, symbol: int, modifiers: int):
+        try:
+            view = LevelView(self.level_id + 1)
+            self.window.show_view(view)
+        except IndexError:
+            view = WinnerView()
+            self.window.show_view(view)
 
 # Created child class of arcade.View
 class LevelView(arc.View):
-    def __init__(self, f = "lvl_1.txt"):
+    def __init__(self, i :int):
         super().__init__()
-
-        f = open("assets/levels/" + f)
+        self.level_id = i
+        f = open(LEVELS[self.level_id])
         self.level = []
         for line in f:
             # Creating list of character lists, excluding the newline character
@@ -92,6 +192,38 @@ class LevelView(arc.View):
 
         sprites.draw()
 
+        filename= LEVELS[self.level_id][:-4]
+        if filename[-2:-1] not in range(10):
+            name = ""
+            for i in range(len(filename)-1, 0-1, -1):
+                if(filename[i] == "_"):
+                    break
+                name = filename[i] + name
+            arc.draw_text(
+                "Made by " + name,
+                SCREEN_WIDTH, 
+                0,
+                arc.color.WHITE_SMOKE,
+                16,
+                anchor_x = "right"
+            )
+
+
+
+        if self.completed():
+            arc.finish_render()
+            arc.pause(1)
+            view = LevelCompletedView(self.level_id)
+            self.window.show_view(view)
+    
+# Check if level is completed
+    def completed(self):
+        for i in range(HEIGHT):
+            for j in range(WIDTH):
+                if self.level[i][j] == BOX:
+                    return False
+        return True
+    
     # Helper function to create a sprite on specific coordinates
     def make_sprite(self, cell, i, j):
         sprite = arc.Sprite(SPRITES[cell], SPRITE_SCALAR)
@@ -172,11 +304,18 @@ class LevelView(arc.View):
             self.move_player(0, -1)
 
 def main():
-
+    global LEVELS
+    # Getting all the levels
+    directory = "assets\levels"
+    for filename in os.listdir(directory):
+        f = os.path.join(directory, filename)
+        if os.path.isfile(f) and ".txt" in filename:
+            LEVELS.append(f)
+    
     # Creating game window with width, height, and title
     window = arc.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     # Creating the level view
-    view = LevelView()
+    view = MenuView()
     window.show_view(view)
     arc.run()
 
