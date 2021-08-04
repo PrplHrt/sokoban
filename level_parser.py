@@ -33,6 +33,25 @@ SPRITES = {
     PLAYER_ON_TARGET:"assets/meriam_sokoban_sprites/floor.jpg"
 }
 
+class MenuView(arc.View):
+    def __init__(self):
+        super().__init__()
+
+    def on_draw(self):
+        arc.start_render()
+
+        arc.draw_text(
+            "Welcome!",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2,
+            arc.color.ALIZARIN_CRIMSON,
+            font_size = 24.0,
+            anchor_x = "center"
+        )
+    
+    def on_key_press(self, symbol: int, modifiers: int):
+        return super().on_key_press(symbol, modifiers)
+
 # Created child class of arcade.View
 class LevelView(arc.View):
     def __init__(self, f = "lvl_1.txt"):
