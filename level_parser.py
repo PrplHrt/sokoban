@@ -2,6 +2,9 @@ import arcade as arc
 import os
 import copy
 import time
+import datetime
+
+from arcade.key import ESCAPE
 
 # Sizes of elements on the screen
 SPRITE_NATIVE_SIZE = 128
@@ -92,45 +95,113 @@ class WinnerView(arc.View):
     def __init__(self):
         super().__init__()
         arc.set_background_color(arc.color.AMARANTH_PURPLE)
+        self.total_moves, self.total_time = 0, 0
+        for level in game_score:
+            self.total_moves += level[0]
+            self.total_time += level[1]
+        self.scores = []
+
+        if os.path.exists('scores.txt'):
+            f = open('scores.txt')
+            for line in f:
+                moves, time_spent, date = line.replace('\n', '').split(',')
+                self.scores.append([int(moves), int(time_spent), date])
+            f.close()
+        dt_string = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.scores.append([self.total_moves, self.total_time, dt_string])
+
+        self.scores.sort()
+
+        f = open("scores.txt", 'w')
+
+        for score in self.scores:
+            f.write(f"{score[0]},{score[1]},{score[2]}\n")
+
+        f.close()
+
+
 
     def on_draw(self):
         arc.start_render()
 
         arc.draw_text(
             "CONGRATULATIONS!",
-            SCREEN_WIDTH//2, 
-            SCREEN_HEIGHT//2,
+            SCREEN_WIDTH * 0.12, 
+            SCREEN_HEIGHT * 0.9,
             arc.color.WHITE_SMOKE,
             48,
-            anchor_x = "center"
+            anchor_x = "left"
         )
         arc.draw_text(
             "You've finished all levels!",
+            SCREEN_WIDTH * 0.12, 
+            SCREEN_HEIGHT * 0.9 - 30,
+            arc.color.WHITE_SMOKE,
+            24,
+            anchor_x = "left"
+        )
+        
+            
+        arc.draw_text(
+            "Total Moves: " + str(self.total_moves) + " Total Time: " + str(self.total_time) + " seconds",
+            SCREEN_WIDTH * 0.12, 
+            SCREEN_HEIGHT * 0.9 - 50,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "left"
+        )
+
+        arc.draw_text(
+            "Leaderboard:",
             SCREEN_WIDTH//2, 
-            SCREEN_HEIGHT//2 - 30,
+            SCREEN_HEIGHT * 0.7,
             arc.color.WHITE_SMOKE,
             24,
             anchor_x = "center"
         )
-        total_moves, total_time = 0, 0
-        for level in game_score:
-            total_moves += level[0]
-            total_time += level[1]
-            
+        i = 1
+        for score in self.scores:
+            if i > 5:
+                break
+            arc.draw_text(
+                f"{i}. {score[2]}: Moves - {score[0]}, Seconds - {score[1]}",
+                SCREEN_WIDTH//2, 
+                SCREEN_HEIGHT * 0.7 - 30 - (i*20),
+                arc.color.WHITE_SMOKE,
+                16,
+                anchor_x = "center"
+            )
+            i += 1
         arc.draw_text(
-            "Total Moves: " + str(total_moves) + " Total Time: " + str(total_time) + " seconds",
+            "Press R to play again!",
             SCREEN_WIDTH//2, 
-            SCREEN_HEIGHT//2 - 48,
+            SCREEN_HEIGHT * 0.1,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "center"
+        )
+        arc.draw_text(
+            "Press ESC to exit!",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT * 0.1 - 20,
             arc.color.WHITE_SMOKE,
             16,
             anchor_x = "center"
         )
 
+
         arc.finish_render()
         arc.pause(1.5)
     
     def on_key_press(self, symbol: int, modifiers: int):
-        self.window.close()
+        global game_score
+        if symbol == arc.key.ESCAPE:
+            self.window.close()
+        if symbol == arc.key.R:
+            game_score = []
+            view = LevelView(0)
+            self.window.show_view(view)
+
 
 class LevelCompletedView(arc.View):
     def __init__(self, i: int, moves: int, time_spent: int):
@@ -200,13 +271,15 @@ class LevelView(arc.View):
         while len(self.level) < HEIGHT:
             self.level.append(list(FLOOR * WIDTH))
         f.close()
-        self.name = "Eyad"
+        self.name = ""
         filename= LEVELS[self.level_id][:-4]
-        if filename[-2:-1] not in range(10):
+        if filename[-1] not in "0123456789":
                 for i in range(len(filename)-1, 0-1, -1):
                     if(filename[i] == "_"):
                         break
                     self.name = filename[i] + self.name
+        else:
+            self.name = "Eyad"
 
         self.counter = 0
         self.cache = []
@@ -413,7 +486,7 @@ class LevelView(arc.View):
 def main():
     global LEVELS
     # Getting all the levels
-    directory = "assets\levels"
+    directory = "assets/levels"
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f) and ".txt" in filename:
