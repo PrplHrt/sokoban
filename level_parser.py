@@ -38,6 +38,8 @@ SPRITES = {
 
 LEVELS = []
 
+game_score = []
+
 class MenuView(arc.View):
     def __init__(self):
         super().__init__()
@@ -105,6 +107,19 @@ class WinnerView(arc.View):
         arc.draw_text(
             "You've finished all levels!",
             SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2 - 30,
+            arc.color.WHITE_SMOKE,
+            24,
+            anchor_x = "center"
+        )
+        total_moves, total_time = 0, 0
+        for level in game_score:
+            total_moves += level[0]
+            total_time += level[1]
+            
+        arc.draw_text(
+            "Total Moves: " + str(total_moves) + " Total Time: " + str(total_time) + " seconds",
+            SCREEN_WIDTH//2, 
             SCREEN_HEIGHT//2 - 48,
             arc.color.WHITE_SMOKE,
             16,
@@ -119,11 +134,13 @@ class WinnerView(arc.View):
 
 class LevelCompletedView(arc.View):
     def __init__(self, i: int, moves: int, time_spent: int):
+        global game_score
         super().__init__()
         self.level_id = i
         self.moves = moves
         self.time_spent = time_spent
         arc.set_background_color(arc.color.AMARANTH_PURPLE)
+        game_score.append((moves, time_spent))
 
     def on_draw(self):
         arc.start_render()
