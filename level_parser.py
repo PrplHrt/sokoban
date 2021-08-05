@@ -1,5 +1,7 @@
 import arcade as arc
 import os
+import copy
+import time
 
 # Sizes of elements on the screen
 SPRITE_NATIVE_SIZE = 128
@@ -116,9 +118,11 @@ class WinnerView(arc.View):
         self.window.close()
 
 class LevelCompletedView(arc.View):
-    def __init__(self, i: int):
+    def __init__(self, i: int, moves: int, time_spent: int):
         super().__init__()
         self.level_id = i
+        self.moves = moves
+        self.time_spent = time_spent
         arc.set_background_color(arc.color.AMARANTH_PURPLE)
 
     def on_draw(self):
@@ -133,11 +137,20 @@ class LevelCompletedView(arc.View):
             anchor_x = "center"
         )
         arc.draw_text(
-            "Press any key to continue...",
+            "Moves: " + str(self.moves) + " Time spent: " + str(self.time_spent) + " seconds",
             SCREEN_WIDTH//2, 
             SCREEN_HEIGHT//2 - 48,
             arc.color.WHITE_SMOKE,
             16,
+            anchor_x = "center"
+        )
+
+        arc.draw_text(
+            "Press any key to continue...",
+            SCREEN_WIDTH//2, 
+            SCREEN_HEIGHT//2 - 70,
+            arc.color.WHITE_SMOKE,
+            12,
             anchor_x = "center"
         )
 
@@ -157,6 +170,7 @@ class LevelView(arc.View):
     def __init__(self, i :int):
         super().__init__()
         self.level_id = i
+        self.time_start = time.time()
         f = open(LEVELS[self.level_id])
         self.level = []
         for line in f:
@@ -169,7 +183,7 @@ class LevelView(arc.View):
         while len(self.level) < HEIGHT:
             self.level.append(list(FLOOR * WIDTH))
         f.close()
-        self.name = ""
+        self.name = "Eyad"
         filename= LEVELS[self.level_id][:-4]
         if filename[-2:-1] not in range(10):
                 for i in range(len(filename)-1, 0-1, -1):
@@ -178,10 +192,13 @@ class LevelView(arc.View):
                     self.name = filename[i] + self.name
 
         self.counter = 0
+        self.cache = []
+        self.cache.append(copy.deepcopy(self.level))
 
     # Refreshes the screen
     def on_draw(self):
         arc.start_render()
+        state = self.cache[-1]
         # Create all the sprites and render the level based on the level matrix
         sprites = arc.SpriteList()
         for i in range(HEIGHT):
@@ -189,13 +206,13 @@ class LevelView(arc.View):
                 floor = self.make_sprite(FLOOR, i, j)
                 sprites.append(floor)
 
-                if self.level[i][j] == FLOOR:
+                if state[i][j] == FLOOR:
                     continue
 
-                sprite = self.make_sprite(self.level[i][j], i, j)
+                sprite = self.make_sprite(state[i][j], i, j)
                 sprites.append(sprite)
 
-                if self.level[i][j] == PLAYER_ON_TARGET:
+                if state[i][j] == PLAYER_ON_TARGET:
                     sprite = self.make_sprite(PLAYER, i, j)
                     sprites.append(sprite)
 
@@ -220,18 +237,59 @@ class LevelView(arc.View):
             anchor_x = "left"
         )
 
+        current_time = time.time()
+        time_spent = int(current_time - self.time_start)
+        arc.draw_text(
+            "Time: " + str(time_spent),
+            0, 
+            20,
+            arc.color.WHITE_SMOKE,
+            16,
+            anchor_x = "left"
+        )
+
+        # Control explanation
+        if self.level_id == 0:
+            arc.draw_text(
+                "Use the WASD or Arrow keys to move",
+                SCREEN_WIDTH - 10, 
+                SCREEN_HEIGHT - 10,
+                arc.color.WHITE_SMOKE,
+                16,
+                anchor_x = "right",
+                anchor_y = "top"
+            )
+            arc.draw_text(
+                "Use Z to undo your last move, and R to reset the level",
+                SCREEN_WIDTH - 10, 
+                SCREEN_HEIGHT - 30,
+                arc.color.WHITE_SMOKE,
+                16,
+                anchor_x = "right",
+                anchor_y = "top"
+            )
+            arc.draw_text(
+                "Try to move all the Boxes onto the targets to win!",
+                SCREEN_WIDTH - 10, 
+                SCREEN_HEIGHT - 50,
+                arc.color.WHITE_SMOKE,
+                16,
+                anchor_x = "right",
+                anchor_y = "top"
+            )
 
         if self.completed():
             arc.finish_render()
-            arc.pause(1)
-            view = LevelCompletedView(self.level_id)
+            arc.pause(0.2)
+            view = LevelCompletedView(self.level_id, self.counter, time_spent)
             self.window.show_view(view)
     
 # Check if level is completed
     def completed(self):
+        state = self.cache[-1]
         for i in range(HEIGHT):
             for j in range(WIDTH):
-                if self.level[i][j] == BOX:
+                if state[i][j] == BOX:
                     return False
         return True
     
@@ -245,17 +303,17 @@ class LevelView(arc.View):
     def inside(self, i, j):
         return 0 <= i < HEIGHT and 0 <= j < WIDTH
 
-    def move_player(self, di, dj):
+    def move_player(self, state, di, dj):
         # Find player first
         pi, pj = -1, -1
-        for i in range(len(self.level)):
-            for j in range(len(self.level[i])):
-                if self.level[i][j] in [PLAYER , PLAYER_ON_TARGET]:
+        for i in range(len(state)):
+            for j in range(len(state[i])):
+                if state[i][j] in [PLAYER , PLAYER_ON_TARGET]:
                     pi, pj = i, j
                     break
         
         under_player = FLOOR 
-        if self.level[pi][pj] != PLAYER:
+        if state[pi][pj] != PLAYER:
             under_player = TARGET
 
         cell1_i = pi + di
@@ -264,20 +322,20 @@ class LevelView(arc.View):
         if not self.inside(cell1_i, cell1_j):
             return
         
-        cell1 = self.level[cell1_i][cell1_j]
+        cell1 = state[cell1_i][cell1_j]
 
         if cell1 == WALL:
             return
         
         if cell1 == FLOOR:
-            self.level[pi][pj] = under_player
-            self.level[cell1_i][cell1_j] = PLAYER
+            state[pi][pj] = under_player
+            state[cell1_i][cell1_j] = PLAYER
             self.counter += 1
             return
         
         if cell1 == TARGET:
-            self.level[pi][pj] = under_player
-            self.level[cell1_i][cell1_j] = PLAYER_ON_TARGET
+            state[pi][pj] = under_player
+            state[cell1_i][cell1_j] = PLAYER_ON_TARGET
             self.counter += 1
             return
         
@@ -287,35 +345,53 @@ class LevelView(arc.View):
         if not self.inside(cell2_i, cell2_j):
             return
         
-        cell2 = self.level[cell2_i][cell2_j]
+        cell2 = state[cell2_i][cell2_j]
 
         if cell2 in [BOX, BOX_ON_TARGET, WALL]:
             return
 
-        self.level[pi][pj] = under_player
+        state[pi][pj] = under_player
 
         if cell1 == BOX_ON_TARGET:
-            self.level[cell1_i][cell1_j] = PLAYER_ON_TARGET
+            state[cell1_i][cell1_j] = PLAYER_ON_TARGET
         elif cell1 == BOX:
-            self.level[cell1_i][cell1_j] = PLAYER
+            state[cell1_i][cell1_j] = PLAYER
 
         if cell2 == FLOOR:
-            self.level[cell2_i][cell2_j] = BOX
+            state[cell2_i][cell2_j] = BOX
         else:
-            self.level[cell2_i][cell2_j] = BOX_ON_TARGET
+            state[cell2_i][cell2_j] = BOX_ON_TARGET
         self.counter += 1
 
-
+    def try_move_player(self, di, dj):
+        state = copy.deepcopy(self.cache[-1])
+        curr_moves = copy.deepcopy(self.counter)
+        self.move_player(state, di, dj)
+        if curr_moves != self.counter:
+            self.cache.append(state)
    
+    def undo(self):
+        self.cache.pop()
+        self.counter -= 1
+    
+    def reset(self):
+        self.cache = [self.cache[0]]
+        self.counter = 0
+        self.time_start = time.time()
+
     def on_key_press(self, key: int, modifiers: int):
         if key == arc.key.UP or key == arc.key.W:
-            self.move_player(-1, 0)
+            self.try_move_player(-1, 0)
         if key == arc.key.DOWN or key == arc.key.S:
-            self.move_player(1, 0)
+            self.try_move_player(1, 0)
         if key == arc.key.RIGHT or key == arc.key.D:
-            self.move_player(0, 1)
+            self.try_move_player(0, 1)
         if key == arc.key.LEFT or key == arc.key.A:
-            self.move_player(0, -1)
+            self.try_move_player(0, -1)
+        if key == arc.key.Z and len(self.cache) > 1:
+            self.undo()
+        if key == arc.key.R:
+            self.reset()
 
 def main():
     global LEVELS
@@ -332,8 +408,6 @@ def main():
     view = MenuView()
     window.show_view(view)
     arc.run()
-
-
 
 if __name__ == '__main__':
     main()
